@@ -2,7 +2,7 @@ import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { ethers, upgrades } from "hardhat";
 
-import { HamsterSwap } from "../typechain-types";
+import { Etherman, HamsterSwap, IWETH9__factory } from "../typechain-types";
 
 /**
  * @dev Define the item type
@@ -41,9 +41,12 @@ describe("HamsterSwap", async function () {
   // We use loadFixture to run this setup once, snapshot that state,
   // and reset Hardhat Network to that snapshopt in every test.
   async function deployFixtures() {
+    const [owner, seller, buyer] = await ethers.getSigners();
+
     /**
      * @dev Initializes mocked erc contracts
      */
+
     const MockedERC20Contract = await ethers.getContractFactory("MockedERC20");
     const MockedERC20 = await MockedERC20Contract.deploy();
 
@@ -52,10 +55,15 @@ describe("HamsterSwap", async function () {
     );
     const MockedERC721 = await MockedERC721Contract.deploy();
 
+    const ERC20_WETH = IWETH9__factory.connect(MockedERC20.address, owner);
+    const EthermanFactory = await ethers.getContractFactory("Etherman");
+    const EthermanContract = (await EthermanFactory.deploy(
+      ERC20_WETH.address
+    )) as unknown as Etherman;
+
     /**
      * @dev Mint erc721
      */
-    const [owner, seller, buyer] = await ethers.getSigners();
     await MockedERC721.connect(owner).safeMint(buyer.address, "1");
     await MockedERC721.connect(owner).safeMint(seller.address, "2");
 
@@ -83,7 +91,7 @@ describe("HamsterSwap", async function () {
       "4",
       [MockedERC721.address, MockedERC20.address],
       [],
-      seller.address
+      EthermanContract.address
     );
 
     /**
