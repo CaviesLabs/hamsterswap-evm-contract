@@ -54,8 +54,9 @@ describe("HamsterSwap", async function () {
       "MockedERC721"
     );
     const MockedERC721 = await MockedERC721Contract.deploy();
+    const MockedERC20Test = await MockedERC20Contract.deploy();
 
-    const ERC20_WETH = IWETH9__factory.connect(MockedERC20.address, owner);
+    const ERC20_WETH = IWETH9__factory.connect(MockedERC20Test.address, owner);
     const EthermanFactory = await ethers.getContractFactory("Etherman");
     const EthermanContract = (await EthermanFactory.deploy(
       ERC20_WETH.address
