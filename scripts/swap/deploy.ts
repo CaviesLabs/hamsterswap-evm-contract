@@ -4,7 +4,7 @@ import { HamsterSwap } from "../../typechain-types";
 async function main() {
   const SwapContract = await ethers.getContractFactory("HamsterSwap");
   const Swap = (await upgrades.deployProxy(SwapContract, [], {
-    unsafeAllow: ["constructor"],
+    unsafeAllow: ["constructor", "delegatecall"],
   })) as unknown as HamsterSwap;
 
   await Swap.deployed();
@@ -24,7 +24,8 @@ async function main() {
       ethers.utils.getAddress("0x56d23f924cd526e5590ed94193a892e913e38079"), // https://opensea.io/collection/archeworld-land
       ethers.utils.getAddress("0xce70eef5adac126c37c8bc0c1228d48b70066d03"), // https://opensea.io/collection/bellygom-world-official
     ],
-    []
+    [],
+    "0xe4f05A66Ec68B54A58B17c22107b02e0232cC817"
   );
 
   console.log("HamsterSwap deployed at:", Swap.address);

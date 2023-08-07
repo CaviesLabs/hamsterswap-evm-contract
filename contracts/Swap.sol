@@ -6,6 +6,7 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/MulticallUpgradeable.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
@@ -13,6 +14,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 import "./Entity.sol";
 import "./Params.sol";
+import "./Etherman.sol";
 
 /**
  * @notice HamsterSwap which is a trustless p2p exchange,
@@ -24,8 +26,11 @@ contract HamsterSwap is
 	PausableUpgradeable,
 	ReentrancyGuardUpgradeable,
 	OwnableUpgradeable,
+	MulticallUpgradeable,
 	IERC721Receiver
 {
+	Etherman public etherman;
+
 	/**
 	 * @dev Administration configurations.
 	 */
@@ -40,6 +45,16 @@ contract HamsterSwap is
 	mapping(string => bool) public uniqueStringRegistry;
 
 	/** @dev Events */
+	event ConfigurationChanged(
+		address actor,
+		uint256 timestamp,
+		uint256 maxAllowedItems,
+		uint256 maxAllowedOptions,
+		address[] whitelistedAddresses,
+		address[] blacklistedAddresses,
+		address ethermanAddress
+	);
+
 	event ProposalCreated(string id, address actor, uint256 timestamp);
 
 	event ProposalRedeemed(
@@ -106,7 +121,8 @@ contract HamsterSwap is
 		uint256 _maxAllowedItems,
 		uint256 _maxAllowedOptions,
 		address[] memory _whitelistedItemAddresses,
-		address[] memory _blackListedItemAddresses
+		address[] memory _blackListedItemAddresses,
+		address payable _ethermanAddress
 	) external onlyOwner whenNotPaused {
 		/**
 		 * @dev Configure values
@@ -127,6 +143,25 @@ contract HamsterSwap is
 		for (uint256 i = 0; i < _blackListedItemAddresses.length; i++) {
 			whitelistedAddresses[_blackListedItemAddresses[i]] = false;
 		}
+
+		/**
+		 * @dev Set etherman address
+		 */
+		etherman = Etherman(_ethermanAddress);
+		IERC20(etherman.WETH()).approve(_ethermanAddress, type(uint256).max);
+
+		/**
+		 * @dev Emit event
+		 */
+		emit ConfigurationChanged(
+			msg.sender,
+			block.timestamp,
+			_maxAllowedItems,
+			_maxAllowedOptions,
+			_whitelistedItemAddresses,
+			_blackListedItemAddresses,
+			_ethermanAddress
+		);
 	}
 
 	/**
@@ -138,10 +173,16 @@ contract HamsterSwap is
 	 */
 	function createProposal(
 		string memory id,
+		address owner,
 		Params.SwapItemParams[] memory swapItemsData,
 		Params.SwapOptionParams[] memory swapOptionsData,
 		uint256 expiredAt
 	) external nonReentrant whenNotPaused {
+		/**
+		 * @dev This allow owner can use smart contract to create proposal
+		 */
+		assert(owner == msg.sender || owner == tx.origin);
+
 		/**
 		 * @dev Avoid duplicated proposal id to be recorded in.
 		 */
@@ -166,7 +207,7 @@ contract HamsterSwap is
 		proposals[id].id = id;
 		proposals[id].expiredAt = expiredAt;
 		proposals[id].status = Entity.ProposalStatus.Deposited;
-		proposals[id].owner = msg.sender;
+		proposals[id].owner = owner;
 
 		/**
 		 * @dev Populate data
@@ -262,7 +303,7 @@ contract HamsterSwap is
 			swapItem.contractAddress = swapItemsData[i].contractAddress;
 			swapItem.itemType = swapItemsData[i].itemType;
 			swapItem.amount = swapItemsData[i].amount;
-			swapItem.owner = msg.sender;
+			swapItem.owner = owner;
 			swapItem.status = Entity.SwapItemStatus.Deposited;
 			swapItem.tokenId = swapItemsData[i].tokenId;
 		}
@@ -272,7 +313,7 @@ contract HamsterSwap is
 		 */
 		transferSwapItems(
 			proposals[id].offeredItems,
-			msg.sender,
+			owner,
 			address(this),
 			Entity.SwapItemStatus.Deposited,
 			address(0)
@@ -281,7 +322,7 @@ contract HamsterSwap is
 		/**
 		 * @dev Emit event
 		 */
-		emit ProposalCreated(id, msg.sender, block.timestamp);
+		emit ProposalCreated(id, owner, block.timestamp);
 	}
 
 	/**
@@ -423,6 +464,45 @@ contract HamsterSwap is
 		emit ProposalWithdrawn(proposalId, msg.sender, block.timestamp);
 	}
 
+	/**
+	 * @dev Wrap ETH to WETH
+	 */
+	function wrapETH(address actor, uint256 amount)
+		external
+		payable
+		nonReentrant
+		whenNotPaused
+	{
+		assert(actor == msg.sender || actor == tx.origin);
+		etherman.wrapETH{value: amount}(actor, amount);
+	}
+
+	/**
+	 * @dev Unwrap WETH to ETH
+	 */
+	function unwrapETH(address payable actor)
+		external
+		nonReentrant
+		whenNotPaused
+	{
+		uint256 amount = IWETH9(etherman.WETH()).balanceOf(actor);
+
+		assert(amount > 0);
+		assert(
+			IWETH9(etherman.WETH()).transferFrom(actor, address(this), amount)
+		);
+
+		etherman.unwrapWETH(actor, amount);
+	}
+
+	/**
+	 * @dev Withdraw assets from contract
+	 * @param items: the items that user wants to transfer
+	 * @param from: the address that user wants to transfer from
+	 * @param to: the address that user wants to transfer to
+	 * @param remarkedStatus: the status that user wants to change to
+	 * @param remarkedOwner: the owner that user wants to change to
+	 */
 	function transferSwapItems(
 		Entity.SwapItem[] storage items,
 		address from,
@@ -468,16 +548,25 @@ contract HamsterSwap is
 			 * @dev transfer ERC20 assets
 			 */
 			if (items[i].itemType == Entity.SwapItemType.Currency) {
+				/// @dev Mark tokenId as 0 as it's not an ERC721 item
 				items[i].tokenId = 0;
 
+				/// @dev If transferring out of the vault
 				if (from == address(this)) {
-					assert(
-						IERC20(items[i].contractAddress).transfer(
-							to,
-							items[i].amount
-						)
-					);
+					/// @dev If it's WETH, unwrap it
+					if (items[i].contractAddress == address(etherman.WETH())) {
+						etherman.unwrapWETH(payable(to), items[i].amount);
+					} else {
+						/// @dev Transfer normal ERC20 assets
+						assert(
+							IERC20(items[i].contractAddress).transfer(
+								to,
+								items[i].amount
+							)
+						);
+					}
 				} else {
+					/// @dev If transferring to the vault, process it normally
 					assert(
 						IERC20(items[i].contractAddress).transferFrom(
 							from,

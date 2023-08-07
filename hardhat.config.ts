@@ -6,6 +6,7 @@ import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "tsconfig-paths/register";
 import "@openzeppelin/hardhat-upgrades";
+import { ethers } from "ethers";
 
 /**
  * Config dotenv first
@@ -31,12 +32,11 @@ const config: HardhatUserConfig = {
  * Extract env vars
  */
 const privateKey = process.env.PRIVATE_KEY || "";
-const testEnv = process.env.ENV === "test";
 
 /**
  * If private key is available, attach network configs
  */
-if (!testEnv && privateKey) {
+if (privateKey) {
   config.networks = {
     ganache: {
       url: "http://127.0.0.1:7545",
@@ -48,12 +48,12 @@ if (!testEnv && privateKey) {
       gasPrice: 250000000000,
     },
     hardhat: {
-      forking: {
-        url: `https://eth-mainnet.alchemyapi.io/v2/${process.env.ALCHEMY_ID}`,
-      },
       gas: "auto",
-      gasPrice: "auto",
+      gasPrice: 0,
       chainId: 1,
+      accounts: {
+        accountsBalance: ethers.utils.parseEther("10000000").toString(),
+      },
     },
     rinkeby: {
       url: `https://rinkeby.infura.io/v3/${process.env.INFURA_ID}`,

@@ -72,7 +72,7 @@ describe("HamsterSwap", async function () {
      */
     const SwapContract = await ethers.getContractFactory("HamsterSwap");
     const Swap = (await upgrades.deployProxy(SwapContract, [], {
-      unsafeAllow: ["constructor"],
+      unsafeAllow: ["constructor", "delegatecall"],
     })) as unknown as HamsterSwap;
 
     /**
@@ -82,7 +82,8 @@ describe("HamsterSwap", async function () {
       "3",
       "4",
       [MockedERC721.address, MockedERC20.address],
-      []
+      [],
+      seller.address
     );
 
     /**
@@ -192,6 +193,7 @@ describe("HamsterSwap", async function () {
      */
     await Swap.connect(seller).createProposal(
       proposalId,
+      seller.address,
       offeredItems,
       askingItems,
       expiredAt
@@ -400,6 +402,7 @@ describe("HamsterSwap", async function () {
      */
     await Swap.connect(seller).createProposal(
       proposalId,
+      seller.address,
       offeredItems,
       askingItems,
       expiredAt

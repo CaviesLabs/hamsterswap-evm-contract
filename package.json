@@ -3,7 +3,8 @@
   "version": "0.1.1",
   "license": "MIT",
   "scripts": {
-    "test": "ENV=test hardhat coverage",
+    "test": "ENV=test hardhat coverage --testfiles test/Swap.test.ts --config hardhat.config.ts --network hardhat",
+    "test:klaytn": "ENV=test hardhat coverage --testfiles test/Swap.klaytn.test.ts --config klaytn-forked.config.ts --network hardhat",
     "lint": "hardhat compile && eslint . --ext .ts --fix",
     "prettier": "prettier --write 'contracts/**/*.sol'",
     "lint:fix": "yarn run lint && yarn run prettier",
