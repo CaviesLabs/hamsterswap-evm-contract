@@ -1,13 +1,20 @@
 import { ethers, upgrades } from "hardhat";
-import { HamsterSwap } from "../../typechain-types";
+import { Etherman, HamsterSwap } from "../../typechain-types";
 
 async function main() {
+  const EthermanFactory = await ethers.getContractFactory("Etherman");
+  const EthermanContract = (await EthermanFactory.deploy(
+    "0xe4f05A66Ec68B54A58B17c22107b02e0232cC817"
+  )) as unknown as Etherman;
+
   const SwapContract = await ethers.getContractFactory("HamsterSwap");
   const Swap = (await upgrades.deployProxy(SwapContract, [], {
     unsafeAllow: ["constructor", "delegatecall"],
   })) as unknown as HamsterSwap;
 
   await Swap.deployed();
+
+  await EthermanContract.transferOwnership(Swap.address);
 
   await Swap.configure(
     ethers.BigNumber.from("4"),
@@ -25,7 +32,7 @@ async function main() {
       ethers.utils.getAddress("0xce70eef5adac126c37c8bc0c1228d48b70066d03"), // https://opensea.io/collection/bellygom-world-official
     ],
     [],
-    "0xe4f05A66Ec68B54A58B17c22107b02e0232cC817"
+    EthermanContract.address
   );
 
   console.log("HamsterSwap deployed at:", Swap.address);
