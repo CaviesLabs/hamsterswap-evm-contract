@@ -30,6 +30,10 @@ async function main() {
       ethers.utils.getAddress("0xd643bb39f81ff9079436f726d2ed27abc547cb38"), // https://opensea.io/collection/puuvillasociety
       ethers.utils.getAddress("0x56d23f924cd526e5590ed94193a892e913e38079"), // https://opensea.io/collection/archeworld-land
       ethers.utils.getAddress("0xce70eef5adac126c37c8bc0c1228d48b70066d03"), // https://opensea.io/collection/bellygom-world-official
+      ethers.utils.getAddress("0xa9f07b1260bb9eebcbaba66700b00fe08b61e1e6"), // https://opensea.io/collection/sheepfarm
+      ethers.utils.getAddress("0x018200befc26d8d50c3caf4791bfb36a9217a1a2"), // https://opensea.io/collection/afk-battle-idle-princess-bb
+      ethers.utils.getAddress("0x96a08c2ae33757c1d4d237450b74c41a12161636"), // https://opensea.io/collection/age-of-zen-heroes-images
+      ethers.utils.getAddress("0xa513819bcc1e157c0567a652c4a775642b62a4ad"), // https://opensea.io/collection/klaykingdoms-502
     ],
     [],
     EthermanContract.address
