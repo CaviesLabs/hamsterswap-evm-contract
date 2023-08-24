@@ -18,7 +18,7 @@ Supports both on-chain and off-chain.
 # 🖥 Deploy
 
 ```bash
-npx hardhat run scripts/pocket/deploy.ts --network <network-name>
+npx hardhat run scripts/pocket/deploy.klaytn.ts --network <network-name>
 ```
 
 # 📦 Test

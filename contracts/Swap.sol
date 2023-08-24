@@ -330,11 +330,16 @@ contract HamsterSwap is
 	 * @param proposalId: the proposal id that targeted to
 	 * @param optionId: the option id that user wants to fulfil with
 	 */
-	function fulfillProposal(string memory proposalId, string memory optionId)
-		external
-		nonReentrant
-		whenNotPaused
-	{
+	function fulfillProposal(
+		string memory proposalId,
+		string memory optionId,
+		address payable buyer
+	) external nonReentrant whenNotPaused {
+		/**
+		 * @dev This allow owner can use smart contract to create proposal
+		 */
+		assert(buyer == msg.sender || buyer == tx.origin);
+
 		/**
 		 * @dev Must be an existed proposal
 		 */
@@ -353,7 +358,7 @@ contract HamsterSwap is
 		/**
 		 * @dev Adjust proposal value.
 		 */
-		proposals[proposalId].fulfilledBy = msg.sender;
+		proposals[proposalId].fulfilledBy = buyer;
 		proposals[proposalId].fulfilledByOptionId = optionId;
 		proposals[proposalId].status = Entity.ProposalStatus.Redeemed;
 

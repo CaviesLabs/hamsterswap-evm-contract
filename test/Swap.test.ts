@@ -312,7 +312,11 @@ describe("HamsterSwap", async function () {
     /**
      * @dev Call contract
      */
-    await Swap.connect(buyer).fulfillProposal("proposal_1", "option_1");
+    await Swap.connect(buyer).fulfillProposal(
+      "proposal_1",
+      "option_1",
+      buyer.address
+    );
 
     /**
      * @dev Expect

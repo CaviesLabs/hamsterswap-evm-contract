@@ -211,7 +211,7 @@ describe("HamsterSwap", async function () {
             ethers.utils.parseEther("20"),
           ]),
           value: ethers.utils.parseEther("20"),
-          allowFailures: false,
+          allowFailure: false,
         },
         {
           target: Swap.address,
@@ -222,7 +222,7 @@ describe("HamsterSwap", async function () {
             askingItems,
             expiredAt,
           ]),
-          allowFailures: false,
+          allowFailure: false,
           value: 0,
         },
       ],
@@ -344,6 +344,7 @@ describe("HamsterSwap", async function () {
         Swap.interface.encodeFunctionData("fulfillProposal", [
           "proposal_1",
           "option_1",
+          buyer.address,
         ]),
       ],
       { gasPrice: 0 }
