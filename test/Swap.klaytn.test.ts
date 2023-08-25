@@ -61,6 +61,7 @@ describe("HamsterSwap", async function () {
     const ERC721 = await MockedERC721Contract.deploy();
     await ERC721.connect(owner).safeMint(buyer.address, "1");
     await ERC721.connect(owner).safeMint(seller.address, "2");
+    await ERC721.connect(owner).safeMint(seller.address, "3");
 
     /**
      * @dev Deploy multicall3
@@ -137,7 +138,7 @@ describe("HamsterSwap", async function () {
     expect(await ERC20_WETH.balanceOf(seller.address)).eq(
       ethers.utils.parseEther("0")
     );
-    expect(await ERC721.balanceOf(seller.address)).eq(1);
+    expect(await ERC721.balanceOf(seller.address)).eq(2);
     expect(await ERC721.ownerOf(2)).eq(seller.address);
 
     expect(await ERC20_WETH.balanceOf(Swap.address)).eq(0);
@@ -297,7 +298,7 @@ describe("HamsterSwap", async function () {
      * @dev After transferring to the contract, the balance will be empty
      */
     expect(await ERC20_WETH.balanceOf(seller.address)).eq(0);
-    expect(await ERC721.balanceOf(seller.address)).eq(0);
+    expect(await ERC721.balanceOf(seller.address)).eq(1);
 
     expect(await ERC20_WETH.balanceOf(Swap.address)).eq(
       ethers.BigNumber.from(ethers.constants.WeiPerEther).mul(20)
@@ -317,7 +318,7 @@ describe("HamsterSwap", async function () {
     expect(await ERC721.ownerOf(1)).eq(buyer.address);
 
     expect(await ERC20_WETH.balanceOf(seller.address)).eq(0);
-    expect(await ERC721.balanceOf(seller.address)).eq(0);
+    expect(await ERC721.balanceOf(seller.address)).eq(1);
 
     expect(await ERC20_WETH.balanceOf(Swap.address)).eq(
       ethers.BigNumber.from(ethers.constants.WeiPerEther).mul(20)
@@ -373,16 +374,15 @@ describe("HamsterSwap", async function () {
     /**
      * @dev Expect options have been recorded properly
      */
-    options
-      .filter((elm) => elm.id === "option_1")
-      .map((elm, index) => {
+    for (let i = 0; i < options.length; i++) {
+      const elm = options[i];
+      if (elm.id === "option_1") {
         elm.askingItems.map((item, itemIndex) => {
-          expect(options[index].askingItems[itemIndex].status).eq(
-            SwapItemStatus.Redeemed
-          ); // status has been recoded as REDEEMED
-          expect(options[index].askingItems[itemIndex].owner).eq(buyer.address); // owner has been updated to buyer address
+          expect(elm.askingItems[itemIndex].status).eq(SwapItemStatus.Redeemed); // status has been recoded as REDEEMED
+          expect(elm.askingItems[itemIndex].owner).eq(buyer.address); // owner has been updated to buyer address
         });
-      });
+      }
+    }
 
     const balanceAfter = await buyer.getBalance();
     /**
@@ -393,10 +393,176 @@ describe("HamsterSwap", async function () {
     expect(await ERC721.ownerOf(2)).eq(buyer.address);
 
     expect(await ERC20_WETH.balanceOf(seller.address)).eq(0);
-    expect(await ERC721.balanceOf(seller.address)).eq(1);
+    expect(await ERC721.balanceOf(seller.address)).eq(2);
     expect(await ERC721.ownerOf(1)).eq(seller.address);
 
     expect(await ERC20_WETH.balanceOf(Swap.address)).eq(0);
     expect(await ERC721.balanceOf(Swap.address)).eq(0);
+  });
+
+  it("Should: anyone can fulfill proposal by wrapping eth and redeem items", async () => {
+    const { Multicall3, Swap, ERC20_WETH, ERC721, seller, buyer } = fixtures;
+
+    /**
+     * @dev Approve first
+     */
+    await ERC20_WETH.connect(seller).approve(
+      Swap.address,
+      ethers.BigNumber.from(ethers.constants.MaxInt256)
+    );
+    await ERC721.connect(seller).setApprovalForAll(Swap.address, true);
+
+    await ERC20_WETH.connect(buyer).approve(
+      Swap.address,
+      ethers.BigNumber.from(ethers.constants.MaxInt256)
+    );
+    await ERC721.connect(buyer).setApprovalForAll(Swap.address, true);
+
+    /**
+     * @dev Create and deposit proposal
+     */
+    const proposalId = "proposal_2";
+    const offeredItems = [
+      {
+        id: "offeredItem_4",
+        contractAddress: ERC20_WETH.address,
+        itemType: SwapItemType.Currency,
+        amount: ethers.BigNumber.from((10 * 10 ** 18).toString()),
+        tokenId: 0,
+      },
+      {
+        id: "offeredItem_5",
+        contractAddress: ERC20_WETH.address,
+        itemType: SwapItemType.Currency,
+        amount: ethers.BigNumber.from((10 * 10 ** 18).toString()),
+        tokenId: 0,
+      },
+      {
+        id: "offeredItem_6",
+        contractAddress: ERC721.address,
+        itemType: SwapItemType.Nft,
+        amount: 1,
+        tokenId: 3,
+      },
+    ];
+    const askingItems = [
+      {
+        id: "option_3",
+        askingItems: [
+          {
+            id: "askingItem_3",
+            contractAddress: ERC721.address,
+            amount: 1,
+            tokenId: 1,
+            itemType: SwapItemType.Nft,
+          },
+        ],
+      },
+      {
+        id: "option_4",
+        askingItems: [
+          {
+            id: "askingItem_4",
+            contractAddress: ERC20_WETH.address,
+            amount: ethers.utils.parseEther("1"),
+            tokenId: 0,
+            itemType: SwapItemType.Currency,
+          },
+        ],
+      },
+    ];
+    const expiredAt =
+      parseInt((new Date().getTime() / 1000).toString()) + 60 * 60;
+
+    /**
+     * @dev Call contract
+     */
+    await Multicall3.connect(seller).aggregate3Value(
+      [
+        {
+          target: Swap.address,
+          callData: Swap.interface.encodeFunctionData("wrapETH", [
+            seller.address,
+            ethers.utils.parseEther("20"),
+          ]),
+          value: ethers.utils.parseEther("20"),
+          allowFailure: false,
+        },
+        {
+          target: Swap.address,
+          callData: Swap.interface.encodeFunctionData("createProposal", [
+            proposalId,
+            seller.address,
+            offeredItems,
+            askingItems,
+            expiredAt,
+          ]),
+          allowFailure: false,
+          value: 0,
+        },
+      ],
+      { value: ethers.utils.parseEther("20") }
+    );
+
+    /**
+     * @dev Now we fulfill the proposal
+     */
+    await Multicall3.connect(buyer).aggregate3Value(
+      [
+        {
+          target: Swap.address,
+          callData: Swap.interface.encodeFunctionData("wrapETH", [
+            buyer.address,
+            ethers.utils.parseEther("1"),
+          ]),
+          allowFailure: false,
+          value: ethers.utils.parseEther("1"),
+        },
+        {
+          target: Swap.address,
+          callData: Swap.interface.encodeFunctionData("fulfillProposal", [
+            "proposal_2",
+            "option_4",
+            buyer.address,
+          ]),
+          allowFailure: false,
+          value: 0,
+        },
+      ],
+      { value: ethers.utils.parseEther("1") }
+    );
+
+    /**
+     * @dev Expect
+     */
+    const proposal = await Swap.proposals("proposal_2");
+    const [items, options] = await Swap.getProposalItemsAndOptions(
+      "proposal_2"
+    );
+
+    expect(proposal.status).eq(ProposalStatus.Redeemed); // Redeemed
+    expect(proposal.fulfilledByOptionId).eq("option_4");
+    expect(proposal.fulfilledBy).eq(buyer.address);
+
+    /**
+     * @dev Expect offered items have been recoded properly
+     */
+    items.map((item, index) => {
+      expect(items[index].owner).eq(seller.address); // owner is recorded properly
+      expect(items[index].status).eq(SwapItemStatus.Redeemed); // status changed to REDEEMED
+    });
+
+    /**
+     * @dev Expect options have been recorded properly
+     */
+    for (let i = 0; i < options.length; i++) {
+      const elm = options[i];
+      if (elm.id === "option_4") {
+        elm.askingItems.map((item, itemIndex) => {
+          expect(elm.askingItems[itemIndex].status).eq(SwapItemStatus.Redeemed); // status has been recoded as REDEEMED
+          expect(elm.askingItems[itemIndex].owner).eq(buyer.address); // owner has been updated to buyer address
+        });
+      }
+    }
   });
 });

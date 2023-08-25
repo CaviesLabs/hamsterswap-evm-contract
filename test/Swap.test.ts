@@ -341,16 +341,15 @@ describe("HamsterSwap", async function () {
     /**
      * @dev Expect options have been recorded properly
      */
-    options
-      .filter((elm) => elm.id === "option_1")
-      .map((elm, index) => {
+    for (let i = 0; i < options.length; i++) {
+      const elm = options[i];
+      if (elm.id === "option_1") {
         elm.askingItems.map((item, itemIndex) => {
-          expect(options[index].askingItems[itemIndex].status).eq(
-            SwapItemStatus.Redeemed
-          ); // status has been recoded as REDEEMED
-          expect(options[index].askingItems[itemIndex].owner).eq(buyer.address); // owner has been updated to buyer address
+          expect(elm.askingItems[itemIndex].status).eq(SwapItemStatus.Redeemed); // status has been recoded as REDEEMED
+          expect(elm.askingItems[itemIndex].owner).eq(buyer.address); // owner has been updated to buyer address
         });
-      });
+      }
+    }
 
     /**
      * @dev Before fulfilling the proposal, the balance will be empty

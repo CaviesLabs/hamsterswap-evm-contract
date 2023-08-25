@@ -395,10 +395,10 @@ contract HamsterSwap is
 		 */
 		transferSwapItems(
 			option.askingItems,
-			msg.sender,
+			buyer,
 			address(proposals[proposalId].owner),
 			Entity.SwapItemStatus.Redeemed,
-			msg.sender
+			buyer
 		);
 
 		/**
@@ -407,7 +407,7 @@ contract HamsterSwap is
 		transferSwapItems(
 			proposals[proposalId].offeredItems,
 			address(this),
-			msg.sender,
+			buyer,
 			Entity.SwapItemStatus.Redeemed,
 			address(0)
 		);
