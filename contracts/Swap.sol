@@ -583,8 +583,6 @@ contract HamsterSwap is
 					}
 				} else {
 					if (shouldUnwrap) {
-						uint256 beforeBalance = address(to).balance;
-
 						/// @dev If transferring to the vault and it's WETH, unwrap it
 						assert(
 							IERC20(items[i].contractAddress).transferFrom(
