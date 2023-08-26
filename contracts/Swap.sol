@@ -490,6 +490,11 @@ contract HamsterSwap is
 		nonReentrant
 		whenNotPaused
 	{
+		/**
+		 * @dev This allow owner can use smart contract to create proposal
+		 */
+		assert(actor == msg.sender || actor == tx.origin);
+
 		uint256 amount = IWETH9(etherman.WETH()).balanceOf(actor);
 
 		assert(amount > 0);

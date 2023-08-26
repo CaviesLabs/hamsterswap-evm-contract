@@ -427,14 +427,14 @@ describe("HamsterSwap", async function () {
         id: "offeredItem_4",
         contractAddress: ERC20_WETH.address,
         itemType: SwapItemType.Currency,
-        amount: ethers.BigNumber.from((10 * 10 ** 18).toString()),
+        amount: ethers.utils.parseEther("10"),
         tokenId: 0,
       },
       {
         id: "offeredItem_5",
         contractAddress: ERC20_WETH.address,
         itemType: SwapItemType.Currency,
-        amount: ethers.BigNumber.from((10 * 10 ** 18).toString()),
+        amount: ethers.utils.parseEther("10"),
         tokenId: 0,
       },
       {
@@ -504,6 +504,8 @@ describe("HamsterSwap", async function () {
       { value: ethers.utils.parseEther("20") }
     );
 
+    const buyerBalance = await buyer.getBalance();
+
     /**
      * @dev Now we fulfill the proposal
      */
@@ -529,7 +531,7 @@ describe("HamsterSwap", async function () {
           value: 0,
         },
       ],
-      { value: ethers.utils.parseEther("1") }
+      { value: ethers.utils.parseEther("1"), gasPrice: 0 }
     );
 
     /**
@@ -564,5 +566,7 @@ describe("HamsterSwap", async function () {
         });
       }
     }
+    const afterBalance = await buyer.getBalance();
+    expect(afterBalance.sub(buyerBalance)).eq(ethers.utils.parseEther("19"));
   });
 });
