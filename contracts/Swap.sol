@@ -16,6 +16,8 @@ import "./Entity.sol";
 import "./Params.sol";
 import "./Etherman.sol";
 
+import "hardhat/console.sol";
+
 /**
  * @notice HamsterSwap which is a trustless p2p exchange,
  * handles NFT-NFT, NFT-Currency and Currency-Currency pocket transactions.
@@ -561,10 +563,14 @@ contract HamsterSwap is
 				/// @dev Mark tokenId as 0 as it's not an ERC721 item
 				items[i].tokenId = 0;
 
+				bool shouldUnwrap = items[i].contractAddress ==
+					address(etherman.WETH()) &&
+					(from == address(this) || to != address(this));
+
 				/// @dev If transferring out of the vault
 				if (from == address(this)) {
 					/// @dev If it's WETH, unwrap it
-					if (items[i].contractAddress == address(etherman.WETH())) {
+					if (shouldUnwrap) {
 						etherman.unwrapWETH(payable(to), items[i].amount);
 					} else {
 						/// @dev Transfer normal ERC20 assets
@@ -576,14 +582,29 @@ contract HamsterSwap is
 						);
 					}
 				} else {
-					/// @dev If transferring to the vault, process it normally
-					assert(
-						IERC20(items[i].contractAddress).transferFrom(
-							from,
-							to,
-							items[i].amount
-						)
-					);
+					if (shouldUnwrap) {
+						uint256 beforeBalance = address(to).balance;
+
+						/// @dev If transferring to the vault and it's WETH, unwrap it
+						assert(
+							IERC20(items[i].contractAddress).transferFrom(
+								from,
+								address(this),
+								items[i].amount
+							)
+						);
+
+						etherman.unwrapWETH(payable(to), items[i].amount);
+					} else {
+						/// @dev If transferring to the vault, process it normally
+						assert(
+							IERC20(items[i].contractAddress).transferFrom(
+								from,
+								to,
+								items[i].amount
+							)
+						);
+					}
 				}
 			}
 

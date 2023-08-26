@@ -505,6 +505,7 @@ describe("HamsterSwap", async function () {
     );
 
     const buyerBalance = await buyer.getBalance();
+    const sellerBalance = await seller.getBalance();
 
     /**
      * @dev Now we fulfill the proposal
@@ -568,5 +569,10 @@ describe("HamsterSwap", async function () {
     }
     const afterBalance = await buyer.getBalance();
     expect(afterBalance.sub(buyerBalance)).eq(ethers.utils.parseEther("19"));
+
+    const sellerAfterBalance = await seller.getBalance();
+    expect(sellerAfterBalance.sub(sellerBalance)).eq(
+      ethers.utils.parseEther("1")
+    );
   });
 });
